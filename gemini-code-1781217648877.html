@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RES - Raíces en Sintonía</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+/* Paleta de Colores basada en el Logo */
+:root {
+  --primary-color: #2F6984;    /* Azul-Verde profundo */
+  --secondary-color: #A96245;  /* Óxido / Naranja cálido */
+  --light-color: #F7EFE9;      /* Fondo beige claro y cálido */
+  --accent-light: #52BF90;     /* Verde complementario para el degradado */
+}
+
+/* Estilos Base y Reseteo */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: var(--light-color);
+  overscroll-behavior: none;   /* Evita el efecto de rebote al deslizar en apps */
+  -webkit-tap-highlight-color: transparent; /* Elimina el recuadro azul al tocar en móviles */
+}
+
+/* Header Adaptado con el Logotipo */
+header {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-light));
+  color: white;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-weight: bold;
+  font-size: 1.3em;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+header img {
+  height: 40px; /* Tamaño del logo en el encabezado */
+  width: auto;
+  border-radius: 50%; /* Hace que el logo se vea circular si es cuadrado */
+  background: white;
+}
+
+/* Contenedor Flexbox Responsivo */
+.container {
+  display: flex;
+  flex-direction: column; /* Apilado por defecto en móviles */
+}
+
+/* Barra Lateral (Sidebar) */
+.sidebar {
+  width: 100%;
+  background: white;
+  padding: 15px;
+  box-sizing: border-box;
+  border-bottom: 3px solid var(--secondary-color);
+}
+
+.sidebar h3 {
+  margin: 10px 0 5px 0;
+  color: var(--primary-color);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1em;
+  background-color: #fff;
+}
+
+/* Área Principal de Contenido */
+.main {
+  flex: 1;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+/* Escenario de Constelaciones (Adaptable) */
+#escenario {
+  height: 45vh; /* Altura relativa a la pantalla del dispositivo */
+  background: #EBF1F5;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden; /* Evita que los avatares se salgan del recuadro */
+  border: 2px dashed var(--primary-color);
+  margin-bottom: 15px;
+}
+
+/* Elementos del Escenario (Avatares y Objetos) */
+.avatar {
+  position: absolute;
+  width: 65px;
+  height: 65px;
+  cursor: move;
+  object-fit: cover;
+  touch-action: none; /* Crucial: detiene el scroll nativo del celular al arrastrar */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Estilo específico para diferenciar Personajes de Objetos visualmente */
+.tipo-personaje {
+  border-radius: 50%; /* Personajes circulares */
+}
+
+.tipo-objeto {
+  border-radius: 8px; /* Objetos sutilmente cuadrados */
+}
+
+/* Tarjetas (Cards) Modernizadas */
+.card {
+  background: white;
+  margin-top: 15px;
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 5px solid var(--secondary-color);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+/* Inputs y Botones adaptados para dedos (Touch Targets) */
+input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1em;
+}
+
+button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px; /* Más alto para facilitar el toque en móviles */
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  transition: background 0.2s ease;
+}
+
+button:active {
+  background: #20495C; /* Feedback visual al presionar */
+}
+
+.btn-secundario {
+  background: #6c757d;
+  margin-top: 15px;
+}
+
+.btn-secundario:active {
+  background: #545b62;
+}
+
+/* Bordes de Emociones Estilizados */
+.emotion-neutral { border: 4px solid #A0AAB2 !important; }
+.emotion-amor { border: 4px solid #52BF90 !important; }
+.emotion-conflicto { border: 4px solid #D9534F !important; }
+.emotion-tristeza { border: 4px solid #4A90E2 !important; }
+.emotion-llanto { border: 4px solid #71A6D2 !important; }
+.emotion-enojo { border: 4px solid #C0392B !important; }
+.emotion-frustracion { border: 4px solid #E67E22 !important; }
+.emotion-dolor { border: 4px solid #8E44AD !important; }
+
+/* Media Query para Pantallas Medianas/Grandes (Tablets y Escritorio) */
+@media screen and (min-width: 768px) {
+  .container {
+    flex-direction: row; /* Diseño en paralelo */
+    min-height: calc(100vh - 64px);
+  }
+
+  .sidebar {
+    width: 280px;
+    border-bottom: none;
+    border-right: 3px solid var(--secondary-color);
+  }
+
+  #escenario {
+    height: 60vh; /* Más espacio vertical en pantallas grandes */
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.jpeg" alt="Logo RES">
+  RAÍCES EN SINTONÍA
+</header>
+
+<div class='container'>
+  <div class='sidebar'>
+    
+    <h3>Personajes</h3>
+    <select id='personaje'>
+      <option value='madre.png'>Madre</option>
+      <option value='padre.png'>Padre</option>
+      <option value='abuelo.png'>Abuelo</option>
+      <option value='sobrino.png'>Sobrino</option>
+      <option value='nino.png'>Niño</option>
+      <option value='cunada.png'>Cuñada</option>
+      <option value='perro.png'>Perro</option>
+    </select>
+
+    <h3>Objetos</h3>
+    <select id='objeto'>
+      <option value='carro.png'>Carro</option>
+      <option value='moto.png'>Moto</option>
+      <option value='casa.png'>Casa</option>
+      <option value='anillo.png'>Anillo</option>
+    </select>
+
+    <h3>Vínculo / Emoción</h3>
+    <select id='emocion'>
+      <option value='neutral'>Neutral</option>
+      <option value='amor'>Amor</option>
+      <option value='conflicto'>Conflicto</option>
+      <option value='tristeza'>Tristeza</option>
+      <option value='llanto'>Llanto</option>
+      <option value='enojo'>Enojo</option>
+      <option value='frustracion'>Frustración</option>
+      <option value='dolor'>Dolor</option>
+    </select>
+
+    <button onclick='agregarAlEscenario("personaje")'>Añadir Personaje</button>
+    <button onclick='agregarAlEscenario("objeto")'>Añadir Objeto</button>
+    
+    <button onclick='guardarSesion()' class="btn-secundario">Guardar Sesión</button>
+    <button onclick='crearSala()'>Iniciar Videollamada</button>
+  </div>
+
+  <div class='main'>
+    <div class='card'>
+      <input id='email' placeholder='Correo electrónico'>
+      <input id='password' type='password' placeholder='Contraseña'>
+      <button onclick='login()'>Ingresar</button>
+      <p id='user'></p>
+    </div>
+
+    <div id='escenario'></div>
+
+    <div class='card'>
+      <input type='date' id='fecha'>
+      <input type='time' id='hora'>
+      <button onclick='crearCita()'>Reservar Cita</button>
+      <div id='citas'></div>
+    </div>
+
+    <div class='card'>
+      <canvas id='grafica'></canvas>
+    </div>
+
+    <div class='card'>
+      <div id='video' style='height:300px; background: #000; border-radius: 6px;'></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Configuración de Firebase
+const firebaseConfig = { apiKey: 'TU_API_KEY', authDomain: 'TU_DOMINIO', projectId: 'TU_PROYECTO' };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+let elementosEscenario = []; // Maneja tanto personajes como objetos uniformemente
+
+function login() {
+  auth.signInWithEmailAndPassword(email.value, password.value).then(u => {
+    user.innerText = u.user.email;
+    verCitas();
+    dashboard();
+  }).catch(err => alert("Error de login: " + err.message));
+}
+
+// Función unificada para añadir Personajes u Objetos con rutas de imágenes corregidas
+function agregarAlEscenario(tipo) {
+  let selector = (tipo === "personaje") ? personaje : objeto;
+  let nombreArchivo = selector.value;
+  let em = emocion.value;
+  
+  let el = document.createElement('img');
+  
+  // Aquí se arma automáticamente la ruta de la línea de la imagen organizada por carpetas
+  if (tipo === "personaje") {
+    el.src = "assets/avatars/" + nombreArchivo;
+  } else {
+    el.src = "assets/objetos/" + nombreArchivo;
+  }
+  
+  // Clases dinámicas dependiendo de si es un objeto o personaje
+  el.className = `avatar tipo-${tipo}`;
+  
+  let obj = { img: el.src, x: 50, y: 50, emocion: em, tipo: tipo };
+  elementosEscenario.push(obj);
+  
+  el.style.left = obj.x + 'px';
+  el.style.top = obj.y + 'px';
+  
+  color(el, em);
+  drag(el, obj);
+  escenario.appendChild(el);
+} 
+
+function color(el, e) {
+  let emotionMap = {
+    'neutral': 'emotion-neutral',
+    'amor': 'emotion-love',
+    'conflicto': 'emotion-conflict',
+    'tristeza': 'emotion-tristeza',
+    'llanto': 'emotion-llanto',
+    'enojo': 'emotion-enojo',
+    'frustracion': 'emotion-frustracion',
+    'dolor': 'emotion-dolor'
+  };
+  el.classList.add(emotionMap[e]);
+}
+
+// Función Drag & Drop Híbrida (Soporta Mouse y Pantallas Táctiles)
+function drag(el, obj) {
+  let ox = 0, oy = 0;
+
+  const iniciarArrastre = (e) => {
+    let clienteX = e.touches ? e.touches[0].clientX : e.clientX;
+    let clienteY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    ox = clienteX - el.offsetLeft;
+    oy = clienteY - el.offsetTop;
+
+    document.addEventListener('mousemove', mover);
+    document.addEventListener('touchmove', mover, { passive: false });
+  };
+
+  const mover = (e) => {
+    if (e.touches) e.preventDefault(); // Evita scroll de pantalla en móvil
+
+    let clienteX = e.touches ? e.touches[0].pageX : e.pageX;
+    let clienteY = e.touches ? e.touches[0].pageY : e.pageY;
+
+    let rectEscenario = escenario.getBoundingClientRect();
+    let xRelativa = clienteX - rectEscenario.left - ox;
+    let yRelativa = clienteY - rectEscenario.top - oy;
+
+    let maxX = rectEscenario.width - el.offsetWidth;
+    let maxY = rectEscenario.height - el.offsetHeight;
+
+    obj.x = Math.max(0, Math.min(xRelativa, maxX));
+    obj.y = Math.max(0, Math.min(yRelativa, maxY));
+
+    el.style.left = obj.x + 'px';
+    el.style.top = obj.y + 'px';
+  };
+
+  const detenerArrastre = () => {
+    document.removeEventListener('mousemove', mover);
+    document.removeEventListener('touchmove', mover);
+  };
+
+  el.addEventListener('mousedown', iniciarArrastre);
+  document.addEventListener('mouseup', detenerArrastre);
+
+  el.addEventListener('touchstart', iniciarArrastre);
+  document.addEventListener('touchend', detenerArrastre);
+}
+
+function guardarSesion() {
+  if(!auth.currentUser) return alert("Debes iniciar sesión primero");
+  db.collection('sesiones').add({ usuario: auth.currentUser.email, personajes: elementosEscenario })
+    .then(() => alert("Sesión guardada exitosamente"));
+}
+
+function crearCita() {
+  if(!auth.currentUser) return alert("Debes iniciar sesión primero");
+  db.collection('citas').add({ usuario: auth.currentUser.email, fecha: fecha.value, hora: hora.value })
+    .then(() => { alert("Cita reservada"); verCitas(); });
+}
+
+function verCitas() {
+  db.collection('citas').where('usuario', '==', auth.currentUser.email).get().then(s => {
+    let h = '';
+    s.forEach(d => {
+      let c = d.data();
+      h += `<p>📅 ${c.fecha} - ⏰ ${c.hora}</p>`
+    });
+    citas.innerHTML = h;
+  });
+}
+
+function dashboard() {
+  db.collection('sesiones').get().then(s => {
+    db.collection('citas').get().then(c => {
+      new Chart(grafica, {
+        type: 'bar',
+        data: {
+          labels: ['Sesiones', 'Citas'],
+          datasets: [{
+            label: 'Total',
+            data: [s.size, c.size],
+            backgroundColor: ['#2F6984', '#A96245']
+          }]
+        },
+        options: { responsive: true }
+      });
+    })
+  })
+}
+
+function crearSala() {
+  new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName: 'RES-' + Math.random().toString(36).substring(7),
+    parentNode: video,
+    width: '100%',
+    height: '100%'
+  });
+}
+</script>
+
+</body>
+</html>
